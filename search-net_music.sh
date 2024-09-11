@@ -14,6 +14,13 @@ then
     exit
 fi
 
+# Проверка, установлен ли curl
+if ! command -v curl &> /dev/null
+then
+    echo "curl не установлен. Установите его с помощью 'pkg install curl'."
+    exit
+fi
+
 # Путь для сохранения загруженных файлов
 output_dir="/storage/emulated/0/Download"
 
@@ -47,7 +54,7 @@ download_youtube_audio() {
     mpv "$audio_file"
 }
 
-# Функция для загрузки аудио с MP3Party
+# Функция для поиска и загрузки аудио с MP3Party
 download_mp3party_audio() {
     read -p "Введите название песни или исполнителя: " query
     if [ -z "$query" ]; then
@@ -55,8 +62,23 @@ download_mp3party_audio() {
         exit
     fi
 
-    echo "Ищем и загружаем песню с MP3Party: $query"
-    yt-dlp -o "$output_dir/%(title)s.%(ext)s" -x --audio-format mp3 --limit-rate 1M --retries 10 "mp3party:$query"
+    echo "Ищем песню на MP3Party: $query"
+
+    # Поиск песни на MP3Party
+    search_url="https://mp3party.net/search?q=$(echo "$query" | sed 's/ /%20/g')"
+    song_page=$(curl -s "$search_url" | grep -oP 'href="\K(/song/\d+)"' | head -n 1)
+
+    if [ -z "$song_page" ]; then
+        echo "Песня не найдена на MP3Party."
+        exit
+    fi
+
+    # Полный URL для песни
+    full_song_url="https://mp3party.net$song_page"
+    echo "Загружаем песню с: $full_song_url"
+
+    # Загрузка аудио с помощью yt-dlp
+    yt-dlp -o "$output_dir/%(title)s.%(ext)s" -x --audio-format mp3 --limit-rate 1M --retries 10 "$full_song_url"
 
     # Поиск загруженного файла
     audio_file=$(find "$output_dir" -type f -name "*.mp3")
@@ -64,7 +86,7 @@ download_mp3party_audio() {
     # Проверка, найден ли аудиофайл
     if [ -z "$audio_file" ]
     then
-        echo "Не удалось загрузить песню по запросу: $query"
+        echo "Не удалось загрузить песню."
         exit
     fi
 
