@@ -1,5 +1,4 @@
 простой скрипт для поиска музыки и песен через yt-dlp
-Вот пример файла `README.md` для проекта `search-net_music`:
 
 ```markdown
 # search-net_music
